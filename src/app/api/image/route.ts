@@ -36,6 +36,6 @@ export async function POST(req: NextRequest) {
     quality: 'standard',
   })
 
-  const imageUrl = imageRes.data[0].url
+  const imageUrl = imageRes.data![0]!.url!
   return NextResponse.json({ url: imageUrl })
 }
