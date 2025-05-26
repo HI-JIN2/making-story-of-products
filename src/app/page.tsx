@@ -1,147 +1,118 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import html2canvas from 'html2canvas'
-import { useRef } from 'react'
 
 export default function Home() {
   const [input, setInput] = useState('')
   const [story, setStory] = useState('')
   const [posterTitle, setPosterTitle] = useState('')
   const [posterDesc, setPosterDesc] = useState('')
-  const [loadingStory, setLoadingStory] = useState(false)
-  const [loadingPoster, setLoadingPoster] = useState(false)
   const [imageUrl, setImageUrl] = useState('')
-  const [loadingImage, setLoadingImage] = useState(false)
-
-
-  const handleStoryGenerate = async () => {
-    setLoadingStory(true)
-    const res = await fetch('/api/story', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input }),
-    })
-    const data = await res.json()
-    setStory(data.story)
-    setLoadingStory(false)
-  }
-
-  const handlePosterGenerate = async () => {
-    setLoadingPoster(true)
-    const res = await fetch('/api/poster', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input }),
-    })
-    const data = await res.json()
-    setPosterTitle(data.title)
-    setPosterDesc(data.description)
-    setLoadingPoster(false)
-  }
-
-
+  const [loading, setLoading] = useState(false)
 
   const posterRef = useRef<HTMLDivElement>(null)
+
+  const handleGenerate = async () => {
+    setLoading(true)
+
+    const storyRes = await fetch('/api/story', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input })
+    }).then(res => res.json())
+
+    setStory(storyRes.story)
+
+    // const posterRes = await fetch('/api/poster', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ input })
+    // }).then(res => res.json())
+
+    setPosterTitle(storyRes.title)
+    setPosterDesc(storyRes.description)
+
+    setLoading(false)
+  }
+
+  const handleImage = async () => {
+    const res = await fetch('/api/image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input }),
+    })
+    const data = await res.json()
+    setImageUrl(data.url)
+  }
 
   const handleDownload = async () => {
     if (!posterRef.current) return
     const canvas = await html2canvas(posterRef.current)
     const image = canvas.toDataURL('image/png')
-
     const link = document.createElement('a')
     link.href = image
     link.download = 'poster.png'
     link.click()
   }
 
-
   return (
-    <main className="max-w-2xl mx-auto mt-10 p-4">
-      <h1 className="text-3xl font-bold mb-4">🌾 농부의 사연을 감성 포스터로</h1>
-      
-      <textarea
-        className="w-full h-40 p-3 border rounded mb-4"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="예: 기후 때문에 사과 농사가 쉽지 않았지만, 가족을 위해 포기하지 않았습니다."
-      />
+    <main className="min-h-screen bg-gray-50 flex flex-col items-center p-6">
+      <div className="w-full max-w-xl space-y-6">
+        <h1 className="text-3xl font-bold text-gray-800">농부의 사연을 감성 포스터로</h1>
 
-      <button
-        className="bg-green-600 text-white px-6 py-2 rounded mr-2"
-        onClick={handleStoryGenerate}
-        disabled={loadingStory}
-      >
-        {loadingStory ? '스토리 생성 중...' : '📖 스토리 생성하기'}
-      </button>
+        <textarea
+          className="w-full p-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none text-gray-800"
+          rows={5}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="예: 장마로 수확이 늦어졌지만, 포기하지 않고 끝까지 사과를 키웠습니다."
+        />
 
-      <button
-        className="bg-blue-600 text-white px-6 py-2 rounded"
-        onClick={handlePosterGenerate}
-        disabled={loadingPoster}
-      >
-        {loadingPoster ? '포스터 생성 중...' : '🎨 포스터 제목/문구 생성'}
-      </button>
-      <button
-        className="mt-2 px-6 py-2 bg-purple-600 text-white rounded"
-        onClick={async () => {
-          setLoadingImage(true)
-          const res = await fetch('/api/image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ input }),
-          })
-          const data = await res.json()
-          setImageUrl(data.url)
-          setLoadingImage(false)
-        }}
-      >
-        {loadingImage ? '이미지 생성 중...' : '🖼️ 감성 포스터 이미지 생성'}
-      </button>
+        <button
+          className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-xl"
+          onClick={handleGenerate}
+          disabled={loading}
+        >
+          {loading ? '포스터 생성 중...' : '📖 사연으로 포스터 만들기'}
+        </button>
 
+        <button
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 rounded-xl"
+          onClick={handleImage}
+        >
+          🖼️ 이미지 생성
+        </button>
 
-      {story && (
-        <div className="mt-6 p-4 border rounded bg-gray-100">
-          <h2 className="text-xl font-semibold mb-2">📘 스토리 결과</h2>
-          <p>{story}</p>
-        </div>
-      )}
+        {(posterTitle || posterDesc || imageUrl || story) && (
+          <div className="bg-white rounded-2xl shadow p-6 space-y-4 mt-6" ref={posterRef}>
+            {imageUrl && (
+              <img src={imageUrl} alt="poster" className="rounded-xl w-full object-cover" />
+            )}
+            {posterTitle && (
+              <h2 className="text-2xl font-bold text-gray-800">{posterTitle}</h2>
+            )}
+            {posterDesc && (
+              <p className="text-gray-600">{posterDesc}</p>
+            )}
+            {story && (
+              <div className="pt-2 border-t border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-800 mb-1">📘 스토리</h3>
+                <p className="text-gray-600 whitespace-pre-line">{story}</p>
+              </div>
+            )}
+          </div>
+        )}
 
-      {posterTitle && (
-        <div className="mt-6 p-4 border rounded bg-blue-50">
-          <h2 className="text-xl font-semibold mb-2">🖼️ 포스터 제목</h2>
-          <p className="text-lg font-bold">{posterTitle}</p>
-          <h3 className="text-md mt-2">📣 소개 문구</h3>
-          <p>{posterDesc}</p>
-        </div>
-      )}
-      {imageUrl && (
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold mb-2">🖼️ 생성된 포스터 이미지</h2>
-          <img src={imageUrl} alt="포스터 이미지" className="rounded border" />
-        </div>
-      )}
-
-      {(posterTitle || imageUrl) && (
-    <div className="mt-10">
-      <h2 className="text-xl font-bold mb-2">🖼️ 최종 포스터</h2>
-
-      <div ref={posterRef} className="w-[400px] p-4 border rounded bg-white shadow">
-        {imageUrl && <img src={imageUrl} alt="포스터" className="rounded mb-4" />}
-        {posterTitle && <h3 className="text-2xl font-bold mb-1">{posterTitle}</h3>}
-        {posterDesc && <p className="text-gray-700">{posterDesc}</p>}
+        {(posterTitle || imageUrl) && (
+          <button
+            onClick={handleDownload}
+            className="w-full mt-4 bg-black hover:bg-gray-800 text-white font-medium py-3 rounded-xl"
+          >
+            ⬇️ 포스터 이미지 다운로드
+          </button>
+        )}
       </div>
-
-      <button
-        onClick={handleDownload}
-        className="mt-4 px-6 py-2 bg-black text-white rounded"
-      >
-        ⬇️ 포스터 다운로드
-      </button>
-    </div>
-  )}
-
-
     </main>
   )
 }
